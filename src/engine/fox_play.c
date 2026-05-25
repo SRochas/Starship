@@ -6273,6 +6273,11 @@ void Player_MoveOnFootRails(Player* player) {
     }
     // ^ Jetpack ===============
 
+    if (gSuperSprint) {
+        player->unk_16C = 1.3f;
+        player->unk_170 = 1.3f;
+    }
+
     player->rot.x = 0.0f;
 
     if (player->vel.y < -50.0f) {
