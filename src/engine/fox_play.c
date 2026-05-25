@@ -6249,7 +6249,7 @@ void Player_MoveOnFootRails(Player* player) {
             Effect_Effect359_Spawn(RAND_FLOAT_CENTERED(20.0f) + player->pos.x, player->groundPos.y + 10.0f,
                                    player->trueZpos - 10.0f, RAND_FLOAT(2.0f) + 3.5f, 255, 16, 1);
         }
-        player->boostMeter++;
+        player->boostMeter += 1.25f;
         if (gCurrentLevel == LEVEL_AQUAS) {
             Aquas_Effect366_Spawn(player->pos.x + RAND_FLOAT_CENTERED(10.0f) + 12.0f,
                               player->pos.y + RAND_FLOAT_CENTERED(1.0f) + 20.0f,
@@ -6259,7 +6259,7 @@ void Player_MoveOnFootRails(Player* player) {
                               player->trueZpos + 5.0f, 0.4f, 1);
         }
     } else {
-        if ((player->boostMeter > 0) && (player->grounded == true)) {
+        if (player->boostMeter > 0) {
             player->boostMeter -= 2;
         }
         player->zRotBank = 0;
