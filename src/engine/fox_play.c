@@ -5274,6 +5274,50 @@ void Player_OnFootUpdateSpeed(Player* player) {
         gFaceZoom = true;
     }
 
+    // C-Left sprint: right thumbstick X negative (analog) or L_CBUTTONS bitmask (button/keyboard)
+    {
+        bool cLeftHeld = (gInputHold->right_stick_x < -40) || ((gInputHold->button & L_CBUTTONS) != 0);
+        if (cLeftHeld && !gPrevCLeft && (gSprintCooldown == 0)) {
+            if (!gSuperSprint) {
+                gSuperSprint = true;
+                gSprintTimer = 75;
+                Player_PlaySfx(player->sfxSource, NA_SE_ARWING_BOOST, player->num);
+            } else {
+                gSuperSprint = false;
+                gSprintTimer = 0;
+                gSprintCooldown = 60;
+            }
+        }
+        gPrevCLeft = cLeftHeld;
+    }
+    if (!gRunning && !gVersusMode) {
+        gSuperSprint = false;
+    }
+
+    if (gSuperSprint) {
+        if (gSprintTimer > 0) {
+            gSprintTimer--;
+        }
+        if (gSprintTimer == 0) {
+            gSuperSprint = false;
+            gSprintCooldown = 120;
+        }
+    } else if (gSprintCooldown > 0) {
+        gSprintCooldown--;
+    }
+
+    if (gSuperSprint && sp2C > 0.0f) {
+        sp2C += 30.0f;
+        player->contrailScale += 0.04f;
+        if (player->contrailScale > 0.6f) {
+            player->contrailScale = 0.6f;
+        }
+        Math_SmoothStepToF(&player->camDist, -200.0f, 0.1f, 30.0f, 0.0f);
+    } else {
+        Math_SmoothStepToF(&player->contrailScale, 0.0f, 0.1f, 0.05f, 0.0f);
+        Math_SmoothStepToF(&player->camDist, 0.0f, 0.1f, 30.0f, 0.0f);
+    }
+
     Math_SmoothStepToF(&player->baseSpeed, sp2C, 1.0f, 1.0f, 0.00001f);
     Math_SmoothStepToF(&player->unk_008, sp28, 0.1f, sp24, 0.00001f);
 }
@@ -9036,7 +9080,7 @@ void Camera_SetStarfieldPos(f32 xEye, f32 yEye, f32 zEye, f32 xAt, f32 yAt, f32 
     tempf = sqrtf(SQ(zEye - zAt) + SQ(xEye - xAt));
     pitch = -Math_Atan2F(yEye - yAt, tempf);
 
-    // Adjust yaw to stay within the range [-¦Ð/2, ¦Ð/2]
+    // Adjust yaw to stay within the range [-ï¿½ï¿½/2, ï¿½ï¿½/2]
     if (yaw >= M_PI / 2) {
         yaw -= M_PI;
     }
