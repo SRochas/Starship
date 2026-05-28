@@ -5322,7 +5322,7 @@ void Player_OnFootUpdateSpeed(Player* player) {
             player->contrailScale = 0.6f;
         }
         Math_SmoothStepToF(&player->camDist, -200.0f, 0.1f, 30.0f, 0.0f);
-    } else {
+    } else if (!player->somersault) {
         Math_SmoothStepToF(&player->contrailScale, 0.0f, 0.1f, 0.05f, 0.0f);
         Math_SmoothStepToF(&player->camDist, 0.0f, 0.1f, 30.0f, 0.0f);
     }
@@ -5804,6 +5804,14 @@ void Player_PerformFootLoop(Player* player) {
     player->pos.y += player->vel.y;
     player->pos.z += player->vel.z;
     player->trueZpos = player->pos.z;
+
+    player->unk_16C = 1.3f;
+    player->unk_170 = 1.3f;
+
+    player->contrailScale += 0.04f;
+    if (player->contrailScale > 0.6f) {
+        player->contrailScale = 0.6f;
+    }
 
     if (player->pos.y < player->groundPos.y) {
         player->pos.y = player->groundPos.y;
