@@ -9094,7 +9094,11 @@ void Camera_UpdateOnFoot360(Player* player, s32 arg1) {
     player->cam.at.z += sp58.z;
 
     Math_SmoothStepToF(&player->cam.eye.x, sp4C.x, 0.3f, 65.0f, 0.001f);
-    Math_SmoothStepToF(&player->cam.eye.y, sp4C.y, 0.3f, 65.0f, 0.001f);
+    if (player->somersault) {
+        player->cam.eye.y = sp4C.y;
+    } else {
+        Math_SmoothStepToF(&player->cam.eye.y, sp4C.y, 0.3f, 65.0f, 0.001f);
+    }
     Math_SmoothStepToF(&player->cam.eye.z, sp4C.z, 0.3f, 65.0f, 0.001f);
     Math_SmoothStepToF(&player->camRoll, player->zRotBank * -0.1f, 0.1f, 1.0f, 0.01f);
     if (arg1 != 0) {
@@ -9121,7 +9125,11 @@ void Camera_UpdateOnFoot(Player* player, s32 arg1) {
     }
 
     // adjust angle/zoom when looking up/down
-    Math_SmoothStepToF(&player->cam.at.y, -(player->unk_154) * 7 + player->pos.y + 50, 0.1f, 100.0f, 0.001f);
+    if (player->somersault) {
+        player->cam.at.y = -(player->unk_154) * 7 + player->pos.y + 50;
+    } else {
+        Math_SmoothStepToF(&player->cam.at.y, -(player->unk_154) * 7 + player->pos.y + 50, 0.1f, 100.0f, 0.001f);
+    }
     player->cam.eye.z -= (fabsf(player->cam.at.y - player->pos.y)) / 3.0f;
     player->cam.eye.y -= (player->cam.at.y - player->pos.y) / 6.0f;
 
