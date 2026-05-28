@@ -22,6 +22,7 @@ bool gStoppedRunning;
 f32 gJumpPos;
 bool gFaceZoom;
 bool gSuperSprint;
+bool gBoostLocked;
 s32 gSprintTimer;
 s32 gSprintCooldown;
 bool gPrevCLeft;

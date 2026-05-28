@@ -5275,48 +5275,41 @@ void Player_OnFootUpdateSpeed(Player* player) {
         gFaceZoom = true;
     }
 
-    // C-Left: down+C-Left while grounded = somersault; otherwise = sprint toggle
+    // C-Left: down+C-Left = somersault (edge); hold C-Left = sprint (drains boostMeter)
     if (!gVersusMode) {
         bool cLeftHeld = (gInputHold->right_stick_x < -40) || ((gInputHold->button & L_CBUTTONS) != 0);
         bool stickDown = (gInputHold->stick_y <= -50);
-        if (cLeftHeld && !gPrevCLeft) {
-            if (stickDown && !player->somersault) {
-                player->somersault = true;
-                player->aerobaticPitch = 0.0f;
-                gSuperSprint = false;
-                Player_PlaySfx(player->sfxSource, NA_SE_ARWING_BOOST, player->num);
-            } else if (!player->somersault && (gSprintCooldown == 0)) {
-                if (!gSuperSprint) {
-                    gSuperSprint = true;
-                    gSprintTimer = 75;
-                    Player_PlaySfx(player->sfxSource, NA_SE_ARWING_BOOST, player->num);
-                } else {
-                    gSuperSprint = false;
-                    gSprintTimer = 0;
-                    gSprintCooldown = 60;
-                }
-            }
+        if (cLeftHeld && !gPrevCLeft && stickDown && !player->somersault) {
+            player->somersault = true;
+            player->aerobaticPitch = 0.0f;
+            Player_PlaySfx(player->sfxSource, NA_SE_ARWING_BOOST, player->num);
         }
         gPrevCLeft = cLeftHeld;
-    }
-    if (!gRunning && !gVersusMode) {
-        gSuperSprint = false;
-    }
 
-    if (gSuperSprint) {
-        if (gSprintTimer > 0) {
-            gSprintTimer--;
+        // Lockout: depleted meter must fully recharge before sprint/jetpack resume
+        if (player->boostMeter >= 90.0f) {
+            gBoostLocked = true;
+        } else if (player->boostMeter <= 0.0f) {
+            gBoostLocked = false;
         }
-        if (gSprintTimer == 0) {
-            gSuperSprint = false;
-            gSprintCooldown = 120;
+
+        // Sprint active while held, energy available, running, and not locked out
+        bool wasSprintActive = gSuperSprint;
+        gSuperSprint = cLeftHeld && !player->somersault && gRunning && !gBoostLocked;
+        if (gSuperSprint && !wasSprintActive) {
+            Player_PlaySfx(player->sfxSource, NA_SE_ARWING_BOOST, player->num);
         }
-    } else if (gSprintCooldown > 0) {
-        gSprintCooldown--;
+    }
+    if (!gRunning || gVersusMode) {
+        gSuperSprint = false;
     }
 
     if (gSuperSprint && sp2C > 0.0f) {
         sp2C += 30.0f;
+        player->boostMeter += player->grounded ? 2.0f : 1.0f;
+        if (player->boostMeter > 90.0f) {
+            player->boostMeter = 90.0f;
+        }
         player->contrailScale += 0.04f;
         if (player->contrailScale > 0.6f) {
             player->contrailScale = 0.6f;
@@ -5667,7 +5660,7 @@ void Player_MoveOnFoot360(Player* player) {
         }
     }
 
-    if (!(gInputHold->button & Z_TRIG) || (player->boostMeter == 90)) {
+    if (!(gInputHold->button & Z_TRIG) || gBoostLocked) {
         player->gravity = 2.0f;
     }
 
@@ -5686,7 +5679,7 @@ void Player_MoveOnFoot360(Player* player) {
     Math_SmoothStepToF(&player->unk_170, 0.0f, 1.0f, 0.2f, 0.0f);
     Math_SmoothStepToF(&player->unk_16C, 0.0f, 1.0f, 0.2f, 0.0f);
 
-    if ((gInputHold->button & Z_TRIG) && (player->gravity == -1.0f) && (player->radioDamageTimer == 0)) {
+    if ((gInputHold->button & Z_TRIG) && (player->gravity == -1.0f) && (player->radioDamageTimer == 0) && !gBoostLocked) {
 
         player->unk_188 = 0.0f;
         Math_SmoothStepToF(&player->unk_170, 1.0f, 1.0f, 0.4f, 0.0f);
@@ -5707,12 +5700,12 @@ void Player_MoveOnFoot360(Player* player) {
                                    player->trueZpos - 10.0f, RAND_FLOAT(2.0f) + 3.5f, 255, 16, 1);
         }
 
-        player->boostMeter++;
+        player->boostMeter += 1.5f;
         if (player->boostMeter > 90) {
             player->boostMeter = 90;
         }
     } else {
-        if ((player->boostMeter > 0) && (player->grounded == true)) {
+        if ((player->boostMeter > 0) && !gSuperSprint) {
             player->boostMeter -= 2;
         }
         
@@ -6281,7 +6274,7 @@ void Player_MoveOnFootRails(Player* player) {
         player->vel.y = 20.0f;
     }
 
-    if (!(gInputHold->button & Z_TRIG) || (player->boostMeter == 90)) {
+    if (!(gInputHold->button & Z_TRIG) || gBoostLocked) {
         player->gravity = 2.0f;
     }
 
@@ -6298,7 +6291,7 @@ void Player_MoveOnFootRails(Player* player) {
     Math_SmoothStepToF(&player->unk_170, 0.0f, 1.0f, 0.2f, 0.0f);
     Math_SmoothStepToF(&player->unk_16C, 0.0f, 1.0f, 0.2f, 0.0f);
 
-    if ((gInputHold->button & Z_TRIG) && (player->gravity == -1.0f) && (player->radioDamageTimer == 0) && (player->boostMeter < 90)) {
+    if ((gInputHold->button & Z_TRIG) && (player->gravity == -1.0f) && (player->radioDamageTimer == 0) && !gBoostLocked) {
 
         player->unk_188 = 0.0f;
         Math_SmoothStepToF(&player->unk_170, 1.0f, 1.0f, 0.4f, 0.0f);
@@ -6318,7 +6311,7 @@ void Player_MoveOnFootRails(Player* player) {
             Effect_Effect359_Spawn(RAND_FLOAT_CENTERED(20.0f) + player->pos.x, player->groundPos.y + 10.0f,
                                    player->trueZpos - 10.0f, RAND_FLOAT(2.0f) + 3.5f, 255, 16, 1);
         }
-        player->boostMeter += 1.25f;
+        player->boostMeter += 1.5f;
         if (gCurrentLevel == LEVEL_AQUAS) {
             Aquas_Effect366_Spawn(player->pos.x + RAND_FLOAT_CENTERED(10.0f) + 12.0f,
                               player->pos.y + RAND_FLOAT_CENTERED(1.0f) + 20.0f,
@@ -6328,7 +6321,7 @@ void Player_MoveOnFootRails(Player* player) {
                               player->trueZpos + 5.0f, 0.4f, 1);
         }
     } else {
-        if (player->boostMeter > 0) {
+        if ((player->boostMeter > 0) && !gSuperSprint) {
             player->boostMeter -= 2;
         }
         player->zRotBank = 0;
