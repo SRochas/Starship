@@ -1758,7 +1758,7 @@ void Display_Player_Update(Player* player, s32 reflectY) {
                              player->trueZpos + player->zPath, MTXF_NEW);
             Matrix_RotateY(gCalcMatrix, (player->yRot_114 + player->rot.y + player->damageShake + 180.0f) * M_DTOR,
                            MTXF_APPLY);
-            Matrix_RotateX(gCalcMatrix, -((player->xRot_120 + player->rot.x + player->damageShake) * M_DTOR),
+            Matrix_RotateX(gCalcMatrix, -((player->xRot_120 + player->rot.x + player->aerobaticPitch + player->damageShake) * M_DTOR),
                            MTXF_APPLY);
             Matrix_RotateZ(gCalcMatrix, -((player->bankAngle + player->rockAngle + player->damageShake) * M_DTOR),
                            MTXF_APPLY);

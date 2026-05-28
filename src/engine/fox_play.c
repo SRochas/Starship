@@ -4371,6 +4371,7 @@ void Player_Shoot(Player* player) {
             break;
 
         case FORM_ON_FOOT:
+            if (player->somersault) { break; }
             if (gInputHold->button & A_BUTTON) {
                 player->shotTimer = 20;
                 if ((gGameFrameCount % 2) == 0) {
@@ -5274,18 +5275,26 @@ void Player_OnFootUpdateSpeed(Player* player) {
         gFaceZoom = true;
     }
 
-    // C-Left sprint: right thumbstick X negative (analog) or L_CBUTTONS bitmask (button/keyboard)
-    {
+    // C-Left: down+C-Left while grounded = somersault; otherwise = sprint toggle
+    if (!gVersusMode) {
         bool cLeftHeld = (gInputHold->right_stick_x < -40) || ((gInputHold->button & L_CBUTTONS) != 0);
-        if (cLeftHeld && !gPrevCLeft && (gSprintCooldown == 0)) {
-            if (!gSuperSprint) {
-                gSuperSprint = true;
-                gSprintTimer = 75;
-                Player_PlaySfx(player->sfxSource, NA_SE_ARWING_BOOST, player->num);
-            } else {
+        bool stickDown = (gInputHold->stick_y <= -50);
+        if (cLeftHeld && !gPrevCLeft) {
+            if (stickDown && !player->somersault) {
+                player->somersault = true;
+                player->aerobaticPitch = 0.0f;
                 gSuperSprint = false;
-                gSprintTimer = 0;
-                gSprintCooldown = 60;
+                Player_PlaySfx(player->sfxSource, NA_SE_ARWING_BOOST, player->num);
+            } else if (!player->somersault && (gSprintCooldown == 0)) {
+                if (!gSuperSprint) {
+                    gSuperSprint = true;
+                    gSprintTimer = 75;
+                    Player_PlaySfx(player->sfxSource, NA_SE_ARWING_BOOST, player->num);
+                } else {
+                    gSuperSprint = false;
+                    gSprintTimer = 0;
+                    gSprintCooldown = 60;
+                }
             }
         }
         gPrevCLeft = cLeftHeld;
@@ -5756,6 +5765,58 @@ void Player_MoveOnFoot360(Player* player) {
     player->pos.z += player->vel.z;
     Player_CheckBounds360(player);
     player->trueZpos = player->pos.z;
+}
+
+void Player_PerformFootLoop(Player* player) {
+    Vec3f sp4C;
+    Vec3f sp40;
+    f32 loopSpeed = 47.0f;
+    f32 temp;
+
+    if (player->aerobaticPitch < 180.0f) {
+        player->pos.y += 2.0f;
+    }
+
+    Math_SmoothStepToF(&player->aerobaticPitch, 360.0f, 0.1f, 5.0f, 0.001f);
+
+    if (player->aerobaticPitch > 350.0f) {
+        player->somersault = false;
+        player->aerobaticPitch = 0.0f;
+    }
+
+    temp = -gInputPress->stick_x * 0.68f;
+    Math_SmoothStepToF(&player->rot.y, temp, 0.1f, 2.0f, 0.0f);
+
+    Matrix_RotateY(gCalcMatrix, (player->yRot_114 + player->rot.y + 180.0f) * M_DTOR, MTXF_NEW);
+    Matrix_RotateX(gCalcMatrix, -((player->xRot_120 + player->rot.x + player->aerobaticPitch) * M_DTOR), MTXF_APPLY);
+
+    sp4C.x = 0.0f;
+    sp4C.y = 0.0f;
+    sp4C.z = loopSpeed;
+
+    Matrix_MultVec3fNoTranslate(gCalcMatrix, &sp4C, &sp40);
+
+    player->vel.x = sp40.x;
+    player->vel.y = sp40.y;
+    player->vel.z = sp40.z;
+
+    player->pos.x += player->vel.x;
+    player->pos.y += player->vel.y;
+    player->pos.z += player->vel.z;
+    player->trueZpos = player->pos.z;
+
+    if (player->pos.y < player->groundPos.y) {
+        player->pos.y = player->groundPos.y;
+        player->vel.y = 0.0f;
+        player->somersault = false;
+        player->aerobaticPitch = 0.0f;
+    }
+    if (player->pos.y < player->yPath) {
+        player->pos.y = player->yPath;
+        player->vel.y = 0.0f;
+        player->somersault = false;
+        player->aerobaticPitch = 0.0f;
+    }
 }
 
 void Player_MoveOnFootRails(Player* player) {
@@ -6445,6 +6506,8 @@ void Player_Setup(Player* playerx) {
             player->hideShadow = false;
         }
     }
+    player->somersault = false;
+    player->aerobaticPitch = 0.0f;
 
     if (gCurrentLevel != LEVEL_CORNERIA) {
         gSavedGroundSurface = SURFACE_GRASS;
@@ -7656,7 +7719,11 @@ void Player_UpdateOnRails(Player* player) {
 
         case FORM_ON_FOOT:
             Player_OnFootUpdateSpeed(player);
-            Player_MoveOnFootRails(player);
+            if (player->somersault) {
+                Player_PerformFootLoop(player);
+            } else {
+                Player_MoveOnFootRails(player);
+            }
             Player_UpdatePath(player);
             Player_Shoot(player);
             Player_FootCollisionCheck(player);
@@ -7743,7 +7810,11 @@ void Player_Update360(Player* player) {
 
         case FORM_ON_FOOT:
             Player_OnFootUpdateSpeed(player);
-            Player_MoveOnFoot360(player);
+            if (player->somersault) {
+                Player_PerformFootLoop(player);
+            } else {
+                Player_MoveOnFoot360(player);
+            }
             Player_Shoot(player);
             Player_FootCollisionCheck(player);
             Player_FloorCheck(player);
@@ -8909,10 +8980,12 @@ void Camera_UpdateTank360(Player* player, s32 arg1) {
     }
 
     Matrix_MultVec3fNoTranslate(gCalcMatrix, &sp54, &sp48);
-    if (player->alternateView) {
-        Math_SmoothStepToF(&player->unk_02C, -player->unk_17C * 3.0f + 30.0f, 0.2f, 8.0f, 0.001f);
-    } else {
-        Math_SmoothStepToF(&player->unk_02C, -player->unk_17C * 3.0f, 0.2f, 8.0f, 0.001f);
+    if (!player->somersault) {
+        if (player->alternateView) {
+            Math_SmoothStepToF(&player->unk_02C, -player->unk_17C * 3.0f + 30.0f, 0.2f, 8.0f, 0.001f);
+        } else {
+            Math_SmoothStepToF(&player->unk_02C, -player->unk_17C * 3.0f, 0.2f, 8.0f, 0.001f);
+        }
     }
 
     sp44 = player->pos.x + sp48.x;
@@ -8986,7 +9059,9 @@ void Camera_UpdateOnFoot360(Player* player, s32 arg1) {
     sp64.z = 110.0f - player->camDist; // 60.0f
 
     Matrix_MultVec3fNoTranslate(gCalcMatrix, &sp64, &sp58);
-    Math_SmoothStepToF(&player->unk_02C, -player->unk_158 * 0.75f, 0.07f, 3.0f, 0.001f); // Look up * 0.5f
+    if (!player->somersault) {
+        Math_SmoothStepToF(&player->unk_02C, -player->unk_158 * 0.75f, 0.07f, 3.0f, 0.001f); // Look up * 0.5f
+    }
 
     sp4C.x = player->pos.x + sp58.x;
     sp4C.y = player->pos.y + 10.0f + sp58.y - (player->unk_02C * 0.8f);
