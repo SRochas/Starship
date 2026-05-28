@@ -9064,7 +9064,7 @@ void Camera_UpdateOnFoot360(Player* player, s32 arg1) {
 
     sp64.x = 0.0f;
     sp64.y = 20.0f;
-    sp64.z = 110.0f - player->camDist; // 60.0f
+    sp64.z = 190.0f - player->camDist; // 60.0f
 
     Matrix_MultVec3fNoTranslate(gCalcMatrix, &sp64, &sp58);
     if (!player->somersault) {
@@ -9115,9 +9115,9 @@ void Camera_UpdateOnFoot(Player* player, s32 arg1) {
     player->cam.eye.y = player->pos.y + 50;
     
     if ((gCurrentLevel == LEVEL_TITANIA) || (gCurrentLevel == LEVEL_MACBETH) || (gCurrentLevel == LEVEL_AQUAS)) {  // zoom out when running
-        player->cam.eye.z = 100 - player->camDist + (player->baseSpeed * 4);
+        player->cam.eye.z = 180 - player->camDist + (player->baseSpeed * 4);
     } else {
-        player->cam.eye.z = 100 - player->camDist + (player->baseSpeed * 2);
+        player->cam.eye.z = 180 - player->camDist + (player->baseSpeed * 2);
     }
 
     // adjust angle/zoom when looking up/down
