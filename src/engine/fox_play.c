@@ -5286,11 +5286,22 @@ void Player_OnFootUpdateSpeed(Player* player) {
         }
         gPrevCLeft = cLeftHeld;
 
-        // Lockout: depleted meter must fully recharge before sprint/jetpack resume
-        if (player->boostMeter >= 90.0f) {
+        // Lockout: set on full depletion, cleared differently based on how it was triggered.
+        // Grounded-sprint lockout clears on becoming airborne or full recharge.
+        // Airborne lockout clears on landing or full recharge.
+        if (player->boostMeter >= 90.0f && !gBoostLocked) {
             gBoostLocked = true;
-        } else if (player->boostMeter <= 0.0f) {
-            gBoostLocked = false;
+            gBoostLockedOnGround = gSuperSprint && player->grounded;
+        } else if (gBoostLocked) {
+            if (player->boostMeter <= 0.0f) {
+                gBoostLocked = false;
+                gBoostLockedOnGround = false;
+            } else if (gBoostLockedOnGround && !player->grounded) {
+                gBoostLocked = false;
+                gBoostLockedOnGround = false;
+            } else if (!gBoostLockedOnGround && player->grounded) {
+                gBoostLocked = false;
+            }
         }
 
         // Sprint active while held, energy available, running, and not locked out
@@ -5306,7 +5317,7 @@ void Player_OnFootUpdateSpeed(Player* player) {
 
     if (gSuperSprint && sp2C > 0.0f) {
         sp2C += 30.0f;
-        player->boostMeter += player->grounded ? 2.0f : 1.0f;
+        player->boostMeter += 1.0f;
         if (player->boostMeter > 90.0f) {
             player->boostMeter = 90.0f;
         }
@@ -5700,15 +5711,15 @@ void Player_MoveOnFoot360(Player* player) {
                                    player->trueZpos - 10.0f, RAND_FLOAT(2.0f) + 3.5f, 255, 16, 1);
         }
 
-        player->boostMeter += 1.5f;
+        player->boostMeter += 1.0f;
         if (player->boostMeter > 90) {
             player->boostMeter = 90;
         }
     } else {
-        if ((player->boostMeter > 0) && !gSuperSprint) {
+        if ((player->boostMeter > 0) && !gSuperSprint && player->grounded) {
             player->boostMeter -= 2;
         }
-        
+
         player->zRotBank = 0;
         Audio_KillSfxBySourceAndId(player->sfxSource, NA_SE_TANK_GO_UP);
         D_800C9F3C = 0;
@@ -6311,7 +6322,7 @@ void Player_MoveOnFootRails(Player* player) {
             Effect_Effect359_Spawn(RAND_FLOAT_CENTERED(20.0f) + player->pos.x, player->groundPos.y + 10.0f,
                                    player->trueZpos - 10.0f, RAND_FLOAT(2.0f) + 3.5f, 255, 16, 1);
         }
-        player->boostMeter += 1.5f;
+        player->boostMeter += 1.0f;
         if (gCurrentLevel == LEVEL_AQUAS) {
             Aquas_Effect366_Spawn(player->pos.x + RAND_FLOAT_CENTERED(10.0f) + 12.0f,
                               player->pos.y + RAND_FLOAT_CENTERED(1.0f) + 20.0f,
@@ -6321,7 +6332,7 @@ void Player_MoveOnFootRails(Player* player) {
                               player->trueZpos + 5.0f, 0.4f, 1);
         }
     } else {
-        if ((player->boostMeter > 0) && !gSuperSprint) {
+        if ((player->boostMeter > 0) && !gSuperSprint && player->grounded) {
             player->boostMeter -= 2;
         }
         player->zRotBank = 0;

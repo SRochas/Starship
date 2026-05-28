@@ -25,6 +25,7 @@ extern f32 gJumpPos;
 extern bool gFaceZoom;
 extern bool gSuperSprint;
 extern bool gBoostLocked;
+extern bool gBoostLockedOnGround;
 extern s32 gSprintTimer;
 extern s32 gSprintCooldown;
 extern bool gPrevCLeft;
